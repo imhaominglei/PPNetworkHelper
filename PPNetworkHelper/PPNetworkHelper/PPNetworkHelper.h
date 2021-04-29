@@ -196,6 +196,28 @@ typedef void(^PPNetworkStatus)(PPNetworkStatusType status);
                                          failure:(PPHttpRequestFailed)failure;
 
 /**
+ *  上传多个文件
+ *
+ *  @param URL        请求地址
+ *  @param parameters 请求参数
+ *  @param name    文件对应服务器上的字段
+ *  @param filePathArray  文件本地的沙盒路径数组
+ *  @param progress   上传进度信息
+ *  @param success    请求成功的回调
+ *  @param failure    请求失败的回调
+ *
+ *  @return 返回的对象可取消请求,调用cancel方法
+ */
++ (__kindof NSURLSessionTask *)uploadFilesWithURL:(NSString *)URL
+                                      parameters:(id)parameters
+                                      name:(NSString *)name
+                                        filePathArray:(NSArray *)filePathArray
+                                        progress:(PPHttpProgress)progress
+                                         success:(PPHttpRequestSuccess)success
+                                         failure:(PPHttpRequestFailed)failure;
+
+
+/**
  *  上传单/多张图片
  *
  *  @param URL        请求地址
@@ -311,4 +333,6 @@ typedef void(^PPNetworkStatus)(PPNetworkStatusType status);
 + (void)setSecurityPolicyWithCerPath:(NSString *)cerPath validatesDomainName:(BOOL)validatesDomainName;
 
 @end
+
+
 
