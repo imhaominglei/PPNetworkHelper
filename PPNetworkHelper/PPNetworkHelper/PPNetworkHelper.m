@@ -182,7 +182,6 @@ static AFHTTPSessionManager *_sessionManager;
                                progress:(PPHttpProgress)progress
                                 success:(PPHttpRequestSuccess)success
                                 failure:(PPHttpRequestFailed)failure {
-    
     NSURLSessionTask *sessionTask = [_sessionManager POST:URL parameters:parameters constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
         NSError *error = nil;
         [formData appendPartWithFileURL:[NSURL URLWithString:filePath] name:name error:&error];
@@ -211,6 +210,46 @@ static AFHTTPSessionManager *_sessionManager;
     return sessionTask;
 }
 
+
++ (NSURLSessionTask *)uploadFilesWithURL:(NSString *)URL
+                                      parameters:(id)parameters
+                                      name:(NSString *)name
+                                   filePathArray:(NSArray *)filePathArray
+                                        progress:(PPHttpProgress)progress
+                                         success:(PPHttpRequestSuccess)success
+                                failure:(PPHttpRequestFailed)failure{
+    NSURLSessionTask *sessionTask = [_sessionManager POST:URL parameters:parameters constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
+        NSError *error = nil;
+        for (NSUInteger i = 0; i < filePathArray.count; i++) {
+            [formData appendPartWithFileURL:[NSURL fileURLWithPath:filePathArray[i]] name:name error:&error];
+            (failure && error) ? failure(error) : nil;
+        }
+       
+    } progress:^(NSProgress * _Nonnull uploadProgress) {
+        //上传进度
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            progress ? progress(uploadProgress) : nil;
+        });
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        
+        if (_isOpenLog) {PPLog(@"responseObject = %@",responseObject);}
+        [[self allSessionTask] removeObject:task];
+        success ? success(responseObject) : nil;
+        
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        
+        if (_isOpenLog) {PPLog(@"error = %@",error);}
+        [[self allSessionTask] removeObject:task];
+        failure ? failure(error) : nil;
+    }];
+    
+    // 添加sessionTask到数组
+    sessionTask ? [[self allSessionTask] addObject:sessionTask] : nil ;
+    
+    return sessionTask;
+    
+}
+
 #pragma mark - 上传多张图片
 + (NSURLSessionTask *)uploadImagesWithURL:(NSString *)URL
                                parameters:(id)parameters
@@ -236,7 +275,8 @@ static AFHTTPSessionManager *_sessionManager;
             
             [formData appendPartWithFileData:imageData
                                         name:name
-                                    fileName:fileNames ? NSStringFormat(@"%@.%@",fileNames[i],imageType?:@"jpg") : imageFileName
+                                    fileName:fileNames ? //NSStringFormat(@"%@.%@",fileNames[i],imageType?:@"jpg") : imageFileName
+                                    NSStringFormat(@"%@",fileNames[i]) : imageFileName
                                     mimeType:NSStringFormat(@"image/%@",imageType ?: @"jpg")];
         }
         
@@ -278,15 +318,16 @@ static AFHTTPSessionManager *_sessionManager;
         });
     } destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
         //拼接缓存目录
-        NSString *downloadDir = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject] stringByAppendingPathComponent:fileDir ? fileDir : @"Download"];
-        //打开文件管理器
-        NSFileManager *fileManager = [NSFileManager defaultManager];
-        //创建Download目录
-        [fileManager createDirectoryAtPath:downloadDir withIntermediateDirectories:YES attributes:nil error:nil];
-        //拼接文件路径
-        NSString *filePath = [downloadDir stringByAppendingPathComponent:response.suggestedFilename];
+        //NSString *downloadDir = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject] stringByAppendingPathComponent:fileDir ? fileDir : @"Download"];
+        NSString *downloadDir = fileDir;
+//        //打开文件管理器
+//        NSFileManager *fileManager = [NSFileManager defaultManager];
+//        //创建Download目录
+//        [fileManager createDirectoryAtPath:downloadDir withIntermediateDirectories:YES attributes:nil error:nil];
+//        //拼接文件路径
+//        NSString *filePath = [downloadDir stringByAppendingPathComponent:response.suggestedFilename];
         //返回文件位置的URL路径
-        return [NSURL fileURLWithPath:filePath];
+        return [NSURL fileURLWithPath:fileDir];
         
     } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
         
